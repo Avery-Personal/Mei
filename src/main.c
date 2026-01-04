@@ -1,66 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-char **TextBuffer;
-
-int Lines = 0;
-int AllocatedLines = 16;
-
-void InitializeBuffer() {
-    TextBuffer = malloc(AllocatedLines * sizeof(char*));
-    TextBuffer[Lines++] = strdup("");
-}
-
-void CheckBuffer() {
-    if (Lines >= AllocatedLines) {
-        AllocatedLines *= 2;
-
-        TextBuffer = realloc(TextBuffer, AllocatedLines * sizeof(char*));
-    }
-}
-
-void StartTerminal() {
-    #if defined(_WIN32) || defined(_WIN64)
-        system("start cmd");
-    #elif defined(__APPLE__) && defined(__MACH__)
-        system("open -a Terminal.app")
-    #elif defined(__unix__) || defined(__unix)
-        system("gnome-terminal")
-    #else
-        fprintf(stderr, "Unknown operating system\n");
-    #endif
-}
+#include "Editor/Terminal.h"
+#include "Editor/Buffer.h"
 
 int main() {
     InitializeBuffer();
-    StartTerminal();
+    EnableRawMode();
 
-    char Input[256];
+    ClearScreen();
 
     while (1) {
-        CheckBuffer();
+        ClearScreen();
+        PrintBuffer();
+        
+        SetCursorPosition(GetCursorX(), GetCursorY());
 
-        printf("Enter text: ");
-        fgets(Input, sizeof(Input), stdin);
+        char Character = ReadKey();
 
-        Input[strcspn(Input, "\n")] = 0;
-        TextBuffer[Lines - 1] = strdup(Input);
-
-        if (strcmp(TextBuffer[Lines-1], ":Exit") == 0) {
-            printf("Exiting\n");
-
+        if (Character == 27)
             break;
-        }
-
-        Lines++;
-        TextBuffer[Lines - 1] = strdup("");
+        else if (Character == 8)
+            DeleteCharacter();
+        else if (Character == -1) // LA
+            MoveCursorLeft();
+        else if (Character == -2) // RA
+            MoveCursorRight();
+        else if (Character == -3) // UA
+            MoveCursorUp();
+        else if (Character == -4) // DA
+            MoveCursorDown();
+        else
+            InsertCharacter(Character);
     }
 
-    for (int i=0; i < Lines; i++)
-        free(TextBuffer[i]);
-
-    free(TextBuffer);
+    DisableRawMode();
 
     return 0;
 }
