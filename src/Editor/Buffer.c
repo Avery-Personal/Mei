@@ -28,7 +28,7 @@ void InsertCharacter(char Character) {
     int len = strlen(Line);
 
     char *NewLine = malloc(len + 2);
-    
+
     memcpy(NewLine, Line, CursorX);
 
     NewLine[CursorX] = Character;
@@ -44,17 +44,55 @@ void DeleteCharacter() {
     char *Line = TextBuffer[CursorY];
     int len = strlen(Line);
 
-    if (CursorX == 0 || len == 0)
-        return;
+    if (CursorX > 0) {
+        char *NewLine = malloc(len);
 
-    char *NewLine = malloc(len);
+        memcpy(NewLine, Line, CursorX - 1);
+        strcpy(NewLine + (CursorX - 1), Line + CursorX);
+        free(TextBuffer[CursorY]);
 
-    memcpy(NewLine, Line, CursorX - 1);
-    strcpy(NewLine + (CursorX - 1), Line + CursorX);
-    free(TextBuffer[CursorY]);
+        TextBuffer[CursorY] = NewLine;
+        CursorX--;
+    } else if (CursorY > 0) {
+        int PreviousLen = strlen(TextBuffer[CursorY - 1]);
+        char *NewLine = malloc(PreviousLen + len + 1);
 
-    TextBuffer[CursorY] = NewLine;
-    CursorX--;
+        strcpy(NewLine, TextBuffer[CursorY - 1]);
+        strcat(NewLine, Line);
+
+        free(TextBuffer[CursorY - 1]);
+        free(TextBuffer[CursorY]);
+
+        TextBuffer[CursorY - 1] = NewLine;
+
+        for (int i = CursorY; i < Lines - 1; i++)
+            TextBuffer[i] = TextBuffer[i + 1];
+
+        Lines--;
+
+        CursorY--;
+        CursorX = PreviousLen;
+    }
+}
+
+void InsertNewLine() {
+    char *Line = TextBuffer[CursorY];
+    int len = strlen(Line);
+
+    char *NewLine = strdup(Line + CursorX);
+
+    Line[CursorX] = '\0';
+
+    CheckBuffer();
+
+    for (int i = Lines; i > CursorY + 1; i--)
+        TextBuffer[i] = TextBuffer[i - 1];
+
+    TextBuffer[CursorY + 1] = NewLine;
+    Lines++;
+
+    CursorY++;
+    CursorX = 0;
 }
 
 void PrintBuffer() {

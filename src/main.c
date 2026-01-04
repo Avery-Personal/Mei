@@ -21,6 +21,8 @@ int main() {
             break;
         else if (Character == 8)
             DeleteCharacter();
+        else if (Character == '\r')
+            InsertNewLine();
         else if (Character == -1) // LA
             MoveCursorLeft();
         else if (Character == -2) // RA

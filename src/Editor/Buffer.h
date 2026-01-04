@@ -9,8 +9,7 @@ void DeleteCharacter();
 
 void PrintBuffer();
 
-void MoveCursorX(int Amount);
-void MoveCursorY(int Amount);
+void InsertNewLine();
 
 void MoveCursorLeft();
 void MoveCursorRight();
