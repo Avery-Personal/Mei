@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Buffer.h"
+#include "Terminal.h"
+
 static char **TextBuffer;
 
 static int Lines = 0;
@@ -9,6 +12,30 @@ static int AllocatedLines = 16;
 
 static int CursorX = 0;
 static int CursorY = 0;
+
+static int ScrollX = 0;
+static int ScrollY = 0;
+
+static void UpdateVerticalScroll() {
+    int ScreenRows = GetTerminalRows();
+
+    if (CursorY < ScrollY)
+        ScrollY = CursorY;
+
+    if (CursorY >= ScrollY + ScreenRows)
+        ScrollY = CursorY - ScreenRows + 1;
+}
+
+static void UpdateHorizontalScroll() {
+    int ScreenWidth = GetTerminalWidth();
+    int Margin = 2;
+
+    if (CursorX < ScrollX)
+        ScrollX = CursorX;
+
+    if (CursorX >= ScrollX + ScreenWidth - Margin)
+        ScrollX = CursorX - ScreenWidth + Margin;
+}
 
 void InitializeBuffer() {
     TextBuffer = malloc(AllocatedLines * sizeof(char*));
@@ -38,6 +65,9 @@ void InsertCharacter(char Character) {
 
     TextBuffer[CursorY] = NewLine;
     CursorX++;
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 void DeleteCharacter() {
@@ -73,6 +103,9 @@ void DeleteCharacter() {
         CursorY--;
         CursorX = PreviousLen;
     }
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 void InsertNewLine() {
@@ -93,17 +126,46 @@ void InsertNewLine() {
 
     CursorY++;
     CursorX = 0;
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 void PrintBuffer() {
-    for (int i = 0; i < Lines; i++) {
-        printf("%s\n", TextBuffer[i]);
+    int ScreenRows = GetTerminalRows();
+    int ScreenWidth = GetTerminalWidth();
+
+    for (int Rows = 0; Rows < ScreenRows; Rows++) {
+        int LineIndex = Rows + ScrollY;
+        if (LineIndex >= Lines)
+            break;
+
+        char *Line = TextBuffer[LineIndex];
+        int len = strlen(Line);
+
+        if (ScrollX < len) {
+            int Visible = len - ScrollX;
+            if (Visible > ScreenWidth)
+                Visible = ScreenWidth;
+
+            fwrite(Line + ScrollX, 1, Visible, stdout);
+        }
+
+        printf("\n");
     }
 }
 
 void MoveCursorLeft() {
     if (CursorX > 0)
         CursorX--;
+    else if (CursorX == 0 && CursorY > 0) {
+        MoveCursorUp();
+
+        CursorX = strlen(TextBuffer[CursorY]);
+    }
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 void MoveCursorRight() {
@@ -111,6 +173,13 @@ void MoveCursorRight() {
 
     if (CursorX < len)
         CursorX++;
+    else if (CursorY < Lines - 1) {
+        CursorY++;
+        CursorX = 0;
+    }
+    
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 void MoveCursorUp() {
@@ -121,6 +190,9 @@ void MoveCursorUp() {
         if (CursorX > len)
             CursorX = len;
     }
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 void MoveCursorDown() {
@@ -128,9 +200,12 @@ void MoveCursorDown() {
         CursorY++;
 
         int len = strlen(TextBuffer[CursorY]);
-        if (CursorX > strlen(TextBuffer[CursorY]))
-            CursorX = strlen(TextBuffer[CursorY]);
+        if (CursorX > len)
+            CursorX = len;
     }
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
 }
 
 int GetCursorX() {
@@ -139,4 +214,12 @@ int GetCursorX() {
 
 int GetCursorY() {
     return CursorY;
+}
+
+int GetScrollX() {
+    return ScrollX;
+}
+
+int GetScrollY() {
+    return ScrollY;
 }

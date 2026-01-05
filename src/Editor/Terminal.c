@@ -23,31 +23,6 @@ void DisableRawMode() {
     SetConsoleMode(InputHandle, OriginalMode);
 }
 
-char ReadKey() {
-    HANDLE InputHandle = GetStdHandle(STD_INPUT_HANDLE);
-
-    INPUT_RECORD Record;
-    DWORD Count;
-
-    while (1) {
-        ReadConsoleInput(InputHandle, &Record, 1, &Count);
-
-        if (Record.EventType == KEY_EVENT && Record.Event.KeyEvent.bKeyDown) {
-            char Character = Record.Event.KeyEvent.uChar.AsciiChar;
-
-            if (Character)
-                return Character;
-            
-            switch (Record.Event.KeyEvent.wVirtualKeyCode) {
-                case VK_LEFT: return -1;
-                case VK_RIGHT: return -2;
-                case VK_UP: return -3;
-                case VK_DOWN: return -4;
-            }
-        }
-    }
-}
-
 void ClearScreen() {
     HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO CSBI;
@@ -70,4 +45,45 @@ void SetCursorPosition(int X, int Y) {
     COORD Position = { (SHORT) X, (SHORT) Y };
 
     SetConsoleCursorPosition(OutputHandle, Position);
+}
+
+int GetTerminalRows() {
+    CONSOLE_SCREEN_BUFFER_INFO CSBI;
+
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &CSBI);
+
+    return CSBI.srWindow.Bottom - CSBI.srWindow.Top + 1;
+}
+
+int GetTerminalWidth() {
+    CONSOLE_SCREEN_BUFFER_INFO CSBI;
+
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &CSBI);
+
+    return CSBI.srWindow.Right - CSBI.srWindow.Left + 1;
+}
+
+int ReadKey() {
+    HANDLE InputHandle = GetStdHandle(STD_INPUT_HANDLE);
+
+    INPUT_RECORD Record;
+    DWORD Count;
+
+    while (1) {
+        ReadConsoleInput(InputHandle, &Record, 1, &Count);
+
+        if (Record.EventType == KEY_EVENT && Record.Event.KeyEvent.bKeyDown) {
+            char Character = Record.Event.KeyEvent.uChar.AsciiChar;
+
+            if (Character)
+                return Character;
+            
+            switch (Record.Event.KeyEvent.wVirtualKeyCode) {
+                case VK_LEFT: return -1;
+                case VK_RIGHT: return -2;
+                case VK_UP: return -3;
+                case VK_DOWN: return -4;
+            }
+        }
+    }
 }

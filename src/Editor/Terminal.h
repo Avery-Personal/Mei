@@ -9,6 +9,9 @@ void DisableRawMode();
 void ClearScreen();
 void SetCursorPosition(int X, int Y);
 
-char ReadKey();
+int GetTerminalRows();
+int GetTerminalWidth();
+
+int ReadKey();
 
 #endif

@@ -13,9 +13,9 @@ int main() {
         ClearScreen();
         PrintBuffer();
         
-        SetCursorPosition(GetCursorX(), GetCursorY());
+        SetCursorPosition(GetCursorX() - GetScrollX(), GetCursorY() - GetScrollY());
 
-        char Character = ReadKey();
+        int Character = ReadKey();
 
         if (Character == 27)
             break;

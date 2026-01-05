@@ -1,6 +1,9 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
+static void UpdateHorizontalScroll();
+static void UpdateVerticalScroll();
+
 void InitializeBuffer();
 void CheckBuffer();
 
@@ -18,5 +21,8 @@ void MoveCursorDown();
 
 int GetCursorX();
 int GetCursorY();
+
+int GetScrollX();
+int GetScrollY();
 
 #endif
