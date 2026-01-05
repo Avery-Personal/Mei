@@ -12,7 +12,7 @@ int main() {
     while (1) {
         ClearScreen();
         PrintBuffer();
-        DrawStatusBar("Untitled.txt");
+        DrawStatusBar(GetFileName());
         
         SetCursorPosition(LINE_NUMBER_GUTTER + GetCursorX() - GetScrollX(), GetCursorY() - GetScrollY());
 
@@ -20,6 +20,12 @@ int main() {
 
         if (Character == 27)
             break;
+        else if (Character == ':')
+            EnterCommandMode();
+        else if (Character == 19)
+            MEI_SaveFile();
+        else if (Character == 15)
+            MEI_OpenFile("Test.txt");
         else if (Character == 8)
             DeleteCharacter();
         else if (Character == '\r')

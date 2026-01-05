@@ -16,6 +16,153 @@ static int CursorY = 0;
 static int ScrollX = 0;
 static int ScrollY = 0;
 
+static char CurrentFile[256] = "Untitled.txt";
+static char *FileContents;
+int FileModified = 0;
+
+void EnterCommandMode() {
+    int ScreenRows = GetTerminalRows();
+    int ScreenWidth = GetTerminalWidth();
+
+    char Command[COMMAND_BUFFER_SIZE] = {0};
+    int CommandLength = 0;
+    
+    DWORD Written;
+
+    SetCursorPosition(0, ScreenRows - 1);
+    FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+
+    printf(":");
+    fflush(stdout);
+
+    while (1) {
+        int Character = ReadKey();
+
+        if (Character == '\r') {
+            Command[CommandLength] = '\0';
+
+            break;
+        } else if (Character == 8) {
+            if (CommandLength > 0) {
+                CommandLength--;
+
+                SetCursorPosition(1 + CommandLength, ScreenRows - 1);
+                putchar(' ');
+                SetCursorPosition(1 + CommandLength, ScreenRows - 1);
+                
+                fflush(stdout);
+            }
+        } else if (Character >= 32 && Character <= 126) {
+            if (CommandLength < COMMAND_BUFFER_SIZE - 1) {
+                Command[CommandLength++] = (char) Character;
+
+                putchar(Character);
+                fflush(stdout);
+            }
+        }
+    }
+
+    if (strncmp(Command, "create ", 7) == 0 || strncmp(Command, "Create ", 7) == 0) {
+        MEI_CreateFile(Command + 7);
+        MEI_OpenFile(CurrentFile);
+    } else if (strncmp(Command, "open ", 5) == 0 || strncmp(Command, "Open ", 5) == 0) {
+        MEI_OpenFile(Command + 5);
+    } else if (strncmp(Command, "remove ", 8) == 0 || strncmp(Command, "Remove ", 8) == 0) {
+        MEI_RemoveFile();
+    } else if (strcmp(Command, "save") == 0 || strcmp(Command, "Save") == 0) {
+        MEI_SaveFile();
+    } else if (strcmp(Command, "quit") == 0 || strcmp(Command, "Quit") == 0) {
+        exit(0);
+    }
+
+    FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+}
+
+void MEI_CreateFile(const char *Filename) {
+    FILE *File = fopen(Filename, "w");
+    if (!File) {
+        fprintf(stderr, "Couldn't create file.");
+        strncpy(CurrentFile, Filename, sizeof(CurrentFile));
+
+        return;
+    }
+
+    fclose(File);
+
+    strncpy(CurrentFile, Filename, sizeof(CurrentFile));
+    InitializeEmptyBuffer();
+}
+  
+void MEI_OpenFile(const char *Filename) {
+    FILE *File = fopen(Filename, "r");
+    if (!File) {
+        InitializeEmptyBuffer();
+        strncpy(CurrentFile, Filename, sizeof(CurrentFile));
+        
+        return;
+    }
+
+    if (TextBuffer) {
+        for (int i = 0; i < Lines; i++)
+            free(TextBuffer[i]);
+
+        free(TextBuffer);
+    }
+    
+    AllocatedLines = 16;
+    Lines = 0;
+    TextBuffer = malloc(AllocatedLines * sizeof(char*));
+
+    char Line[1024];
+
+    while (fgets(Line, sizeof(Line), File)) {
+        Line[strcspn(Line, "\r\n")] = 0;
+
+        CheckBuffer();
+        
+        TextBuffer[Lines++] = strdup(Line);
+    }
+
+    fclose(File);
+
+    CursorX = CursorY = ScrollX = ScrollY = 0;
+    FileModified = 0;
+
+    strncpy(CurrentFile, Filename, sizeof(CurrentFile));
+
+    if (Lines == 0)
+        TextBuffer[Lines++] = strdup("");
+}
+
+void MEI_RemoveFile() {
+    FILE *File = fopen(CurrentFile, "r");
+    if (!File) {
+        fprintf(stderr, "Couldn't find file.");
+        strncpy(CurrentFile, CurrentFile, sizeof(CurrentFile));
+
+        return;
+    }
+
+    fclose(File);
+    
+    int Removed = remove(CurrentFile);
+    if (Removed != 0)
+        fprintf(stderr, "Unable to remove file.");
+}
+
+void MEI_SaveFile() {
+    FILE *File = fopen(CurrentFile, "w");
+    if (!File)
+        return;
+
+    for (int i = 0; i < Lines; i++)
+        fprintf(File, "%s\n", TextBuffer[i]);
+
+    fclose(File);
+
+    FileModified = 0;
+}
+
 static void UpdateVerticalScroll() {
     int ScreenRows = GetTerminalRows();
 
@@ -42,6 +189,24 @@ void InitializeBuffer() {
     TextBuffer[Lines++] = strdup("");
 }
 
+void InitializeEmptyBuffer() {
+    if (TextBuffer) {
+        for (int i = 0; i < Lines; i++)
+            free(TextBuffer[i]);
+
+        free(TextBuffer);
+    }
+
+    AllocatedLines = 16;
+    Lines = 0;
+
+    TextBuffer = malloc(AllocatedLines * sizeof(char*));
+    TextBuffer[Lines++] = strdup("");
+
+    CursorX = CursorY = ScrollX = ScrollY = 0;
+    FileModified = 0;
+}
+
 void CheckBuffer() {
     if (Lines >= AllocatedLines) {
         AllocatedLines *= 2;
@@ -65,6 +230,8 @@ void InsertCharacter(char Character) {
 
     TextBuffer[CursorY] = NewLine;
     CursorX++;
+    
+    FileModified = 1;
 
     UpdateHorizontalScroll();
     UpdateVerticalScroll();
@@ -103,6 +270,8 @@ void DeleteCharacter() {
         CursorY--;
         CursorX = PreviousLen;
     }
+    
+    FileModified = 1;
 
     UpdateHorizontalScroll();
     UpdateVerticalScroll();
@@ -126,6 +295,8 @@ void InsertNewLine() {
 
     CursorY++;
     CursorX = 0;
+
+    FileModified = 1;
 
     UpdateHorizontalScroll();
     UpdateVerticalScroll();
@@ -179,7 +350,6 @@ void DrawStatusBar(const char *Filename) {
     int ScreenRows = GetTerminalRows();
     int ScreenWidth = GetTerminalWidth();
     
-    int Modified = 0;
     char Status[256];
     
     DWORD Written;
@@ -189,8 +359,20 @@ void DrawStatusBar(const char *Filename) {
     FillConsoleOutputCharacter(OutputHandle, ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
     SetCursorPosition(0, ScreenRows - 1);
 
-    snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s", Filename, GetCursorY() + 1, GetCursorX() + 1, Modified ? "Modified" : "Saved");
+    snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s", CurrentFile, GetCursorY() + 1, GetCursorX() + 1, FileModified ? "Modified" : "Saved");
     fwrite(Status, 1, strlen(Status), stdout);
+}
+
+void SaveFile() {
+    FileModified = 0;
+}
+
+void ModifyFile() {
+    FileModified = 1;
+}
+
+const char *GetFileName() {
+    return CurrentFile;
 }
 
 void MoveCursorLeft() {
