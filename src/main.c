@@ -18,11 +18,22 @@ int main() {
 
         int Character = ReadKey();
 
+        if (IsSearchActive()) {
+            HandleSearchInput(Character);
+
+            continue;
+        }
+
         if (Character == 27)
             break;
         else if (Character == ':')
             EnterCommandMode();
-        else if (Character == 19)
+        else if (Character == 6) {
+            SetActiveSearch(1);
+
+            ResetSearchLen();
+            ResetSearchQuery();
+        } else if (Character == 19)
             MEI_SaveFile();
         else if (Character == 15)
             MEI_OpenFile("Test.txt");

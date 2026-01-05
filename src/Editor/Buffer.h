@@ -4,7 +4,18 @@
 #define LINE_NUMBER_GUTTER 6
 #define COMMAND_BUFFER_SIZE 256
 
+#define UNDO_STACK_SIZE 50
+
 void EnterCommandMode();
+
+void PushUndo();
+void Undo();
+
+void CopySelection();
+void CutSelection();
+void PasteClipboard();
+
+void HandleSearchInput(int Character);
 
 void MEI_CreateFile(const char *Filename);
 void MEI_OpenFile(const char *Filename);
@@ -29,6 +40,12 @@ void DrawStatusBar(const char *Filename);
 void SaveFile();
 void ModifyFile();
 const char *GetFileName();
+
+void SetActiveSearch(int Active);
+int IsSearchActive();
+
+void ResetSearchQuery();
+void ResetSearchLen();
 
 void MoveCursorLeft();
 void MoveCursorRight();

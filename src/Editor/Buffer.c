@@ -5,6 +5,11 @@
 #include "Buffer.h"
 #include "Terminal.h"
 
+static int SearchActive = 0;
+static char SearchQuery[256] = {0};
+static int SearchLen = 0;
+
+static char Clipboard[1024];
 static char **TextBuffer;
 
 static int Lines = 0;
@@ -76,6 +81,50 @@ void EnterCommandMode() {
     }
 
     FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+}
+
+void HandleSearchInput(int Character) {
+    int ScreenRows = GetTerminalRows();
+    int ScreenWidth = GetTerminalWidth();
+
+    DWORD Written;
+
+    if (Character == 27 || Character == '\r') {
+        SearchActive = 0;
+
+        return;
+    }
+
+    if (Character == 8 && SearchLen > 0) {
+        SearchLen--;
+        SearchQuery[SearchLen] = '\0';
+    } else if (Character >= 32 && Character <= 126) {
+        if (SearchLen < sizeof(SearchQuery) - 1) {
+            SearchQuery[SearchLen++] = (char)Character;
+            SearchQuery[SearchLen] = '\0';
+        }
+    }
+
+    for (int Y = 0; Y < Lines; Y++) {
+        char *Position = strstr(TextBuffer[Y], SearchQuery);
+
+        if (Position) {
+            CursorY = Y;
+            CursorX = Position - TextBuffer[Y];
+
+            UpdateHorizontalScroll();
+            UpdateVerticalScroll();
+
+            break;
+        }
+    }
+
+    SetCursorPosition(0, ScreenRows - 1);
+    FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+
+    printf("/%s", SearchQuery);
+
+    fflush(stdout);
 }
 
 void MEI_CreateFile(const char *Filename) {
@@ -337,11 +386,27 @@ void PrintBuffer() {
         if (ScrollX < len) {
             int Visible = len - ScrollX;
             int MaxText = ScreenWidth - LINE_NUMBER_GUTTER;
+            
+            int i = ScrollX;
 
             if (Visible > MaxText)
                 Visible = MaxText;
 
-            fwrite(Line + ScrollX, 1, Visible, stdout);
+            while (i < len && i < ScrollX + Visible) {
+                if (SearchActive && SearchLen > 0 && strncmp(&Line[i], SearchQuery, SearchLen) == 0) {
+                    SetConsoleTextAttribute(OutputHandle, BACKGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+
+                    fwrite(&Line[i], 1, SearchLen, stdout);
+
+                    SetConsoleTextAttribute(OutputHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+
+                    i += SearchLen;
+                } else {
+                    fwrite(&Line[i], 1, 1, stdout);
+
+                    i++;
+                }
+            }
         }
     }
 }
@@ -373,6 +438,22 @@ void ModifyFile() {
 
 const char *GetFileName() {
     return CurrentFile;
+}
+
+void SetActiveSearch(int Active) {
+    SearchActive = Active;
+}
+
+int IsSearchActive() {
+    return SearchActive;
+}
+
+void ResetSearchQuery() {
+    SearchQuery[0] = '\0';
+}
+
+void ResetSearchLen() {
+    SearchLen = 0;
 }
 
 void MoveCursorLeft() {
