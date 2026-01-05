@@ -12,8 +12,9 @@ int main() {
     while (1) {
         ClearScreen();
         PrintBuffer();
+        DrawStatusBar("Untitled.txt");
         
-        SetCursorPosition(GetCursorX() - GetScrollX(), GetCursorY() - GetScrollY());
+        SetCursorPosition(LINE_NUMBER_GUTTER + GetCursorX() - GetScrollX(), GetCursorY() - GetScrollY());
 
         int Character = ReadKey();
 

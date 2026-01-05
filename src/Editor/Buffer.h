@@ -1,6 +1,8 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
+#define LINE_NUMBER_GUTTER 6
+
 static void UpdateHorizontalScroll();
 static void UpdateVerticalScroll();
 
@@ -11,6 +13,7 @@ void InsertCharacter(char Character);
 void DeleteCharacter();
 
 void PrintBuffer();
+void DrawStatusBar(const char *Filename);
 
 void InsertNewLine();
 

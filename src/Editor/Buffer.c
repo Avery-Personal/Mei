@@ -132,27 +132,65 @@ void InsertNewLine() {
 }
 
 void PrintBuffer() {
-    int ScreenRows = GetTerminalRows();
+    int ScreenRows = GetTerminalRows() - 1;
     int ScreenWidth = GetTerminalWidth();
+    
+    DWORD Written;
+    HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
     for (int Rows = 0; Rows < ScreenRows; Rows++) {
         int LineIndex = Rows + ScrollY;
         if (LineIndex >= Lines)
             break;
 
+        SetCursorPosition(0, Rows);
+        FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, Rows}, &Written);
+
+        if (LineIndex == CursorY)
+            SetConsoleTextAttribute(OutputHandle, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
+
+        if (LineIndex < Lines) {
+            char Number[LINE_NUMBER_GUTTER + 1];
+
+            snprintf(Number, sizeof(Number), "%4d |", LineIndex + 1);
+            fwrite(Number, 1, strlen(Number), stdout);
+        } else {
+            fwrite("    0 |", 1, LINE_NUMBER_GUTTER, stdout);
+        }
+        
+        SetConsoleTextAttribute(OutputHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+
         char *Line = TextBuffer[LineIndex];
         int len = strlen(Line);
 
         if (ScrollX < len) {
             int Visible = len - ScrollX;
-            if (Visible > ScreenWidth)
-                Visible = ScreenWidth;
+            int MaxText = ScreenWidth - LINE_NUMBER_GUTTER;
+
+            if (Visible > MaxText)
+                Visible = MaxText;
 
             fwrite(Line + ScrollX, 1, Visible, stdout);
         }
-
-        printf("\n");
     }
+}
+
+void DrawStatusBar(const char *Filename) {
+    int ScreenRows = GetTerminalRows();
+    int ScreenWidth = GetTerminalWidth();
+    
+    int Modified = 0;
+    char Status[256];
+    
+    DWORD Written;
+    HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    SetConsoleTextAttribute(OutputHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    FillConsoleOutputCharacter(OutputHandle, ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+    SetCursorPosition(0, ScreenRows - 1);
+
+    snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s", Filename, GetCursorY() + 1, GetCursorX() + 1, Modified ? "Modified" : "Saved");
+    fwrite(Status, 1, strlen(Status), stdout);
 }
 
 void MoveCursorLeft() {
