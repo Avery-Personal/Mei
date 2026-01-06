@@ -33,7 +33,11 @@ int main() {
 
             ResetSearchLen();
             ResetSearchQuery();
-        } else if (Character == 19)
+        } else if (Character == 26)
+            Undo();
+        else if (Character == 25)
+            Redo();
+        else if (Character == 19)
             MEI_SaveFile();
         else if (Character == 15)
             MEI_OpenFile("Test.txt");

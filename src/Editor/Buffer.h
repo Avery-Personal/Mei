@@ -10,6 +10,7 @@ void EnterCommandMode();
 
 void PushUndo();
 void Undo();
+void Redo();
 
 void CopySelection();
 void CutSelection();

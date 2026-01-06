@@ -5,6 +5,18 @@
 #include "Buffer.h"
 #include "Terminal.h"
 
+typedef struct {
+    char **Lines;
+    int LinesCount;
+    int CursorX, CursorY;
+} EditorState;
+
+static EditorState UndoStack[UNDO_STACK_SIZE];
+static int UndoTop = -1;
+
+static EditorState RedoStack[UNDO_STACK_SIZE];
+static int RedoTop = -1;
+
 static int SearchActive = 0;
 static char SearchQuery[256] = {0};
 static int SearchLen = 0;
@@ -81,6 +93,115 @@ void EnterCommandMode() {
     }
 
     FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+}
+
+void PushUndo() {
+    if (UndoTop >= UNDO_STACK_SIZE - 1) {
+        for (int i = 0; i < UndoStack[0].LinesCount; i++)
+            free(UndoStack[0].Lines[i]);
+
+        free(UndoStack[0].Lines);
+        memmove(&UndoStack[0], &UndoStack[1], sizeof(EditorState) * (UNDO_STACK_SIZE - 1));
+
+        UndoTop = UNDO_STACK_SIZE - 2;
+    }
+
+    UndoTop++;
+
+    UndoStack[UndoTop].LinesCount = Lines;
+    UndoStack[UndoTop].CursorX = CursorX;
+    UndoStack[UndoTop].CursorY = CursorY;
+    
+    UndoStack[UndoTop].Lines = malloc(Lines * sizeof(char*));
+
+    for (int i = 0; i < Lines; i++)
+        UndoStack[UndoTop].Lines[i] = strdup(TextBuffer[i]);
+
+    RedoTop = -1;
+}
+
+void Undo() {
+    if (UndoTop < 0)
+        return;
+
+    RedoTop++;
+
+    RedoStack[RedoTop].LinesCount = Lines;
+    RedoStack[RedoTop].CursorX = CursorX;
+    RedoStack[RedoTop].CursorY = CursorY;
+
+    RedoStack[RedoTop].Lines = malloc(Lines * sizeof(char*));
+
+    for (int i = 0; i < Lines; i++)
+        RedoStack[RedoTop].Lines[i] = strdup(TextBuffer[i]);
+
+    EditorState *Previous = &UndoStack[UndoTop];
+
+    for (int i = 0; i < Lines; i++)
+        free(TextBuffer[i]);
+
+    free(TextBuffer);
+
+    Lines = Previous->LinesCount;
+    TextBuffer = malloc(Lines * sizeof(char*));
+
+    for (int i = 0; i < Lines; i++)
+        TextBuffer[i] = strdup(Previous->Lines[i]);
+
+    CursorX = Previous -> CursorX;
+    CursorY = Previous -> CursorY;
+
+    UndoTop--;
+}
+
+void Redo() {
+    if (RedoTop < 0)
+        return;
+
+    if (UndoTop < UNDO_STACK_SIZE - 1) {
+        UndoTop++;
+
+        UndoStack[UndoTop].LinesCount = Lines;
+        UndoStack[UndoTop].CursorX = CursorX;
+        UndoStack[UndoTop].CursorY = CursorY;
+
+        UndoStack[UndoTop].Lines = malloc(Lines * sizeof(char*));
+
+        for (int i = 0; i < Lines; i++)
+            UndoStack[UndoTop].Lines[i] = strdup(TextBuffer[i]);
+    }
+
+    EditorState *RedoState = &RedoStack[RedoTop];
+
+    for (int i = 0; i < Lines; i++)
+        free(TextBuffer[i]);
+
+    free(TextBuffer);
+
+    Lines = RedoState -> LinesCount;
+    TextBuffer = malloc(Lines * sizeof(char*));
+
+    for (int i = 0; i < Lines; i++)
+        TextBuffer[i] = strdup(RedoState -> Lines[i]);
+
+    CursorX = RedoState -> CursorX;
+    CursorY = RedoState -> CursorY;
+
+    RedoTop--;
+}
+
+void CopySelection() {
+    strncpy(Clipboard, TextBuffer[CursorY], sizeof(Clipboard));
+}
+
+void CutSelection() {
+    CopySelection();
+    DeleteCharacter();
+}
+
+void PasteClipboard() {
+    for (int i = 0; Clipboard[i]; i++)
+        InsertCharacter(Clipboard[i]);
 }
 
 void HandleSearchInput(int Character) {
@@ -265,6 +386,8 @@ void CheckBuffer() {
 }
 
 void InsertCharacter(char Character) {
+    PushUndo();
+
     char *Line = TextBuffer[CursorY];
     int len = strlen(Line);
 
@@ -287,6 +410,11 @@ void InsertCharacter(char Character) {
 }
 
 void DeleteCharacter() {
+    if (Lines == 0)
+        return;
+
+    PushUndo();
+    
     char *Line = TextBuffer[CursorY];
     int len = strlen(Line);
 
@@ -327,6 +455,8 @@ void DeleteCharacter() {
 }
 
 void InsertNewLine() {
+    PushUndo();
+    
     char *Line = TextBuffer[CursorY];
     int len = strlen(Line);
 
