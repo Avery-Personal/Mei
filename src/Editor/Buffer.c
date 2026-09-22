@@ -121,12 +121,12 @@ static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int 
     for (int Position = StartColumn; Position < EndColumn && Position < Length; Position++) {
         if (SearchActive && SearchLen > 0 && Position + SearchLen <= Length && strncmp(&Line[Position], SearchQuery, SearchLen) == 0) {
             if (CurrentStyle != SYNTAX_STYLE_NORMAL) {
-                SetTextColor(COLOR_NORMAL);
+                MEI_SetTextColor(COLOR_NORMAL);
                 
                 CurrentStyle = SYNTAX_STYLE_NORMAL;
             }
 
-            SetTextColor(COLOR_SEARCH_MATCH);
+            MEI_SetTextColor(COLOR_SEARCH_MATCH);
 
             int MatchLength = SearchLen;
 
@@ -137,7 +137,7 @@ static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int 
 
             Position += MatchLength - 1;
 
-            SetTextColor(COLOR_NORMAL);
+            MEI_SetTextColor(COLOR_NORMAL);
 
             CurrentStyle = SYNTAX_STYLE_NORMAL;
 
@@ -146,7 +146,7 @@ static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int 
 
         SyntaxStyle Style = GetSyntaxStyleAt(Tokens, Position);
         if (Style != CurrentStyle) {
-            SetTextColor( SyntaxStyleToColor(Style));
+            MEI_SetTextColor( SyntaxStyleToColor(Style));
 
             CurrentStyle = Style;
         }
@@ -154,7 +154,7 @@ static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int 
         fwrite(&Line[Position], 1, 1, stdout);
     }
 
-    SetTextColor(COLOR_NORMAL);
+    MEI_SetTextColor(COLOR_NORMAL);
 }
 
 static int CommandEquals(const char *A, const char *B) {
@@ -926,7 +926,7 @@ void PrintBuffer() {
         ClearLine(ScreenRow);
 
         if (LineIndex == CursorY)
-            SetTextColor(COLOR_CURSOR_LINE);
+            MEI_SetTextColor(COLOR_CURSOR_LINE);
 
         char Number[LINE_NUMBER_GUTTER + 1];
 
@@ -934,7 +934,7 @@ void PrintBuffer() {
 
         fwrite(Number, 1, strlen(Number), stdout);
 
-        SetTextColor(COLOR_NORMAL);
+        MEI_SetTextColor(COLOR_NORMAL);
 
         int Length = (int) strlen(Line);
         int MaxText = ScreenWidth - LINE_NUMBER_GUTTER;
@@ -948,7 +948,7 @@ void PrintBuffer() {
             RenderSyntaxLine(Line, Length, ScrollX, Visible, &Tokens);
         }
 
-        SetTextColor(COLOR_NORMAL);
+        MEI_SetTextColor(COLOR_NORMAL);
     }
 }
 
@@ -958,7 +958,7 @@ void DrawStatusBar(const char *Filename) {
     char FilePath[1024];
     char Status[256];
 
-    SetTextColor(COLOR_NORMAL);
+    MEI_SetTextColor(COLOR_NORMAL);
     ClearLine(ScreenRows - 1);
 
     if (!GetFullPath(Filename, FilePath, sizeof(FilePath))) {
@@ -973,7 +973,7 @@ void ShowCommandError(const char *Message) {
     int ScreenRows = GetTerminalRows();
 
     ClearLine(ScreenRows - 1);
-    SetTextColor(COLOR_NORMAL);
+    MEI_SetTextColor(COLOR_NORMAL);
 
     printf("%s", Message);
     fflush(stdout);
