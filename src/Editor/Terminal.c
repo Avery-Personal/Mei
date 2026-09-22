@@ -174,6 +174,9 @@
 
         while (read(STDIN_FILENO, &Character, 1) != 1);
 
+        if (Character == 127)
+            return 8;
+
         if (Character == 27) {
             char Sequence[2];
 
