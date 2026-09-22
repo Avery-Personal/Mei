@@ -6,9 +6,8 @@
 
     #define UNDO_STACK_SIZE 50
 
-    void CommandMode();
     void EnterCommandMode();
-    void ExitCommandMode();
+    void EnterGlobalCommandMode();
 
     void PushUndo();
     void Undo();

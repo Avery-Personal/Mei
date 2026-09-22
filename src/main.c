@@ -34,6 +34,8 @@ int main() {
             break;
         else if (Character == ':')
             EnterCommandMode();
+        else if (Character == '!')
+            EnterGlobalCommandMode();
         else if (Character == 6) {
             SetActiveSearch(1);
 

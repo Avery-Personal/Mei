@@ -5,6 +5,7 @@
 
 #include "Buffer.h"
 #include "Terminal.h"
+#include "Path.h"
 #include "Syntax/Syntax.h"
 
 typedef struct {
@@ -34,6 +35,8 @@ static int CursorY = 0;
 
 static int ScrollX = 0;
 static int ScrollY = 0;
+
+static char FullFilePath[512] = "";
 
 static char CurrentFile[256] = "Untitled.txt";
 static char *FileContents;
@@ -156,8 +159,7 @@ static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int 
 
 static int CommandEquals(const char *A, const char *B) {
     while (*A != '\0' && *B != '\0') {
-        if (tolower((unsigned char)*A) !=
-            tolower((unsigned char)*B)) {
+        if (tolower((unsigned char) *A) != tolower((unsigned char) *B)) {
             return 0;
         }
 
@@ -184,7 +186,7 @@ void EnterCommandMode(void) {
 
     while (1) {
         int Character = ReadKey();
-        
+
         if (Character == ':' && CommandLength == 0) {
             ClearLine(ScreenRows - 1);
             
@@ -319,6 +321,98 @@ void EnterCommandMode(void) {
         return;
     }
 
+    ClearLine(ScreenRows - 1);
+
+    DrawStatusBar(CurrentFile);
+}
+
+void EnterGlobalCommandMode(void) {
+    int ScreenRows = GetTerminalRows();
+
+    char Command[COMMAND_BUFFER_SIZE] = {0};
+    int CommandLength = 0;
+
+    ClearLine(ScreenRows - 1);
+
+    printf("!");
+    fflush(stdout);
+
+    while (1) {
+        int Character = ReadKey();
+
+        if (Character == '!' && CommandLength == 0) {
+            ClearLine(ScreenRows - 1);
+            
+            DrawStatusBar(CurrentFile);
+            
+            return;
+        }
+
+        if (Character == '\r') {
+            Command[CommandLength] = '\0';
+
+            break;
+        }
+
+        if (Character == 27) {
+            ClearLine(ScreenRows - 1);
+
+            DrawStatusBar(CurrentFile);
+
+            return;
+        }
+
+        if (Character == 8) {
+            if (CommandLength > 0) {
+                CommandLength--;
+
+                SetCursorPosition(1 + CommandLength, ScreenRows - 1);
+
+                putchar(' ');
+
+                SetCursorPosition(1 + CommandLength, ScreenRows - 1);
+
+                fflush(stdout);
+            }
+
+            continue;
+        }
+
+        if (Character >= 32 && Character <= 126) {
+            if (CommandLength < COMMAND_BUFFER_SIZE - 1) {
+                Command[CommandLength++] = (char) Character;
+
+                putchar(Character);
+                fflush(stdout);
+            }
+        }
+    }
+
+    if (CommandLength == 0) {
+        ClearLine(ScreenRows - 1);
+
+        DrawStatusBar(CurrentFile);
+
+        return;
+    }
+    
+    DisableRawMode();
+    
+    printf("\n");
+    fflush(stdout);
+
+    int Result = system(Command);
+
+    EnableRawMode();
+
+    printf("\n");
+    printf("[Process exited with status %d. Press any key to return to Mei]",  Result);
+
+    fflush(stdout);
+
+    ReadKey();
+
+    ClearScreen();
     ClearLine(ScreenRows - 1);
 
     DrawStatusBar(CurrentFile);
@@ -831,72 +925,20 @@ void PrintBuffer() {
     }
 }
 
-/*
-void PrintBuffer() {
-    int ScreenRows = GetTerminalRows() - 1;
-    int ScreenWidth = GetTerminalWidth();
-
-    for (int Rows = 0; Rows < ScreenRows; Rows++) {
-        int LineIndex = Rows + ScrollY;
-        if (LineIndex >= Lines)
-            break;
-
-        ClearLine(Rows);
-
-        if (LineIndex == CursorY)
-            SetTextColor(COLOR_CURSOR_LINE);
-
-        if (LineIndex < Lines) {
-            char Number[LINE_NUMBER_GUTTER + 1];
-
-            snprintf(Number, sizeof(Number), "%4d |", LineIndex + 1);
-            fwrite(Number, 1, strlen(Number), stdout);
-        } else {
-            fwrite("    0 |", 1, LINE_NUMBER_GUTTER, stdout);
-        }
-        
-        SetTextColor(COLOR_NORMAL);
-
-        char *Line = TextBuffer[LineIndex];
-        int len = strlen(Line);
-
-        if (ScrollX < len) {
-            int Visible = len - ScrollX;
-            int MaxText = ScreenWidth - LINE_NUMBER_GUTTER;
-            
-            int i = ScrollX;
-
-            if (Visible > MaxText)
-                Visible = MaxText;
-
-            while (i < len && i < ScrollX + Visible) {
-                if (SearchActive && SearchLen > 0 && strncmp(&Line[i], SearchQuery, SearchLen) == 0) {
-                    SetTextColor(COLOR_SEARCH_MATCH);
-
-                    fwrite(&Line[i], 1, SearchLen, stdout);
-
-                    SetTextColor(COLOR_NORMAL);
-
-                    i += SearchLen;
-                } else {
-                    fwrite(&Line[i], 1, 1, stdout);
-
-                    i++;
-                }
-            }
-        }
-    }
-}*/
-
 void DrawStatusBar(const char *Filename) {
     int ScreenRows = GetTerminalRows();
-    
+
+    char FilePath[1024];
     char Status[256];
 
     SetTextColor(COLOR_NORMAL);
     ClearLine(ScreenRows - 1);
 
-    snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s", CurrentFile, GetCursorY() + 1, GetCursorX() + 1, FileModified ? "Modified" : "Saved");
+    if (!GetFullPath(Filename, FilePath, sizeof(FilePath))) {
+        snprintf(FilePath, sizeof(FilePath), "%s", Filename);
+    }
+
+    snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s  |  %s", CurrentFile, GetCursorY() + 1, GetCursorX() + 1, FileModified ? "Modified" : "Saved", FilePath);
     fwrite(Status, 1, strlen(Status), stdout);
 }
 
