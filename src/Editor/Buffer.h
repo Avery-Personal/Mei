@@ -35,6 +35,7 @@
     void DeleteCharacter();
 
     void InsertNewLine();
+    void InsertTab();
 
     void PrintBuffer();
     void DrawStatusBar(const char *Filename);

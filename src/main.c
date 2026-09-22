@@ -61,6 +61,8 @@ int main() {
             MoveCursorUp();
         else if (Character == -4) // DA
             MoveCursorDown();
+        else if (Character == '\t')
+            InsertTab();
         else
             InsertCharacter(Character);
     }

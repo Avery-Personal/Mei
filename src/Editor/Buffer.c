@@ -873,6 +873,33 @@ void InsertNewLine() {
     UpdateVerticalScroll();
 }
 
+void InsertTab() {
+    PushUndo();
+
+    char *Line = TextBuffer[CursorY];
+    int len = strlen(Line);
+
+    char *NewLine = malloc(len + 3);
+
+    memcpy(NewLine, Line, CursorX);
+
+    NewLine[CursorX] = ' ';
+    NewLine[CursorX + 1] = ' ';
+
+    strcpy(NewLine + CursorX + 2, Line + CursorX);
+
+    free(TextBuffer[CursorY]);
+    
+    TextBuffer[CursorY] = NewLine;
+
+    CursorX += 2;
+
+    FileModified = 1;
+
+    UpdateHorizontalScroll();
+    UpdateVerticalScroll();
+}
+
 void PrintBuffer() {
     int ScreenRows = GetTerminalRows() - 1;
     int ScreenWidth = GetTerminalWidth();
