@@ -2,6 +2,7 @@
 
 #include "Syntax.h"
 #include "Languages/CSyntax.h"
+#include "Languages/LuaSyntax.h"
 
 static const SyntaxLanguage CLanguage = {
     .ID = SYNTAX_LANGUAGE_C,
@@ -10,8 +11,16 @@ static const SyntaxLanguage CLanguage = {
     .LexerLine = CLexerLine
 };
 
+static const SyntaxLanguage LuaLanguage = {
+    .ID = SYNTAX_LANGUAGE_Lua,
+    .Name = "Lua",
+    .MatchesFilename = LuaMatchesFilename,
+    .LexerLine = LuaLexerLine
+};
+
 static const SyntaxLanguage *Languages[] = {
-    &CLanguage
+    &CLanguage,
+    &LuaLanguage
 };
 
 static const size_t LanguageCount = sizeof(Languages) / sizeof(Languages[0]);

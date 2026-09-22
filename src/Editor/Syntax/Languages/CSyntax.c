@@ -258,20 +258,14 @@ void CLexerLine(const char *Line, size_t Length, SyntaxState *State, SyntaxToken
             while (Position < Length) {
 
                 if (Line[Position] == '\\') {
-                    /*
-                     * Skip escaped character.
-                     *
-                     * Example:
-                     *     \" 
-                     *     \n
-                     *     \\
-                     */
                     Position += 2;
+
                     continue;
                 }
 
                 if (Line[Position] == '"') {
                     Position++;
+                    
                     break;
                 }
 

@@ -5,7 +5,10 @@
 
     typedef enum {
         SYNTAX_LANGUAGE_NONE = 0,
-        SYNTAX_LANGUAGE_C
+        SYNTAX_LANGUAGE_C,
+        SYNTAX_LANGUAGE_CPP,
+        SYNTAX_LANGUAGE_CS,
+        SYNTAX_LANGUAGE_Lua,
     } SyntaxLanguageID;
     
     typedef struct SyntaxLanguage {
