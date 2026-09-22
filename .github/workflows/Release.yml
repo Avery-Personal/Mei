@@ -1,0 +1,120 @@
+name: Release Executables
+
+on:
+  workflow_run:
+    workflows: ["Auto Tag"]
+    types:
+      - completed
+
+jobs:
+  build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            output: Mei-Windows.exe
+
+          - os: macos-latest
+            name: macOS
+            output: Mei-macOS
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: tag
+        shell: bash
+        run: |
+          tag=$(git tag --sort=-v:refname | head -n 1)
+
+          if [ -z "$tag" ]; then
+            echo "No tag found"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Latest tag: $tag"
+
+      - name: Build Mei
+        shell: bash
+        run: |
+          mkdir -p build
+
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            gcc \
+              main.c \
+              Editor/Buffer.c \
+              Editor/Terminal.c \
+              Editor/Path.c \
+              Editor/Syntax/Syntax.c \
+              Editor/Syntax/Languages/CSyntax.c \
+              Editor/Syntax/Languages/LuaSyntax.c \
+              -o "build/${{ matrix.output }}"
+
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            clang \
+              main.c \
+              Editor/Buffer.c \
+              Editor/Terminal.c \
+              Editor/Path.c \
+              Editor/Syntax/Syntax.c \
+              Editor/Syntax/Languages/CSyntax.c \
+              Editor/Syntax/Languages/LuaSyntax.c \
+              -o "build/${{ matrix.output }}"
+          fi
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mei-${{ matrix.name }}
+          path: build/${{ matrix.output }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get latest tag
+        id: tag
+        shell: bash
+        run: |
+          tag=$(git tag --sort=-v:refname | head -n 1)
+
+          if [ -z "$tag" ]; then
+            echo "No tag found"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Mei ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            artifacts/Mei-Windows/Mei-Windows.exe
+            artifacts/Mei-macOS/Mei-macOS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
