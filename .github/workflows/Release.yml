@@ -47,6 +47,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p build
+          cd src
 
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             gcc \
@@ -57,7 +58,7 @@ jobs:
               Editor/Syntax/Syntax.c \
               Editor/Syntax/Languages/CSyntax.c \
               Editor/Syntax/Languages/LuaSyntax.c \
-              -o "build/${{ matrix.output }}"
+              -o "../build/${{ matrix.output }}"
 
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             clang \
@@ -68,7 +69,7 @@ jobs:
               Editor/Syntax/Syntax.c \
               Editor/Syntax/Languages/CSyntax.c \
               Editor/Syntax/Languages/LuaSyntax.c \
-              -o "build/${{ matrix.output }}"
+              -o "../build/${{ matrix.output }}"
           fi
 
       - name: Upload executable
@@ -117,4 +118,3 @@ jobs:
             artifacts/Mei-macOS/Mei-macOS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
