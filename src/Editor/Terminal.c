@@ -8,14 +8,25 @@
 
     void EnableRawMode() {
         HANDLE InputHandle = GetStdHandle(STD_INPUT_HANDLE);
+        HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
         GetConsoleMode(InputHandle, &OriginalMode);
 
         DWORD Mode = OriginalMode;
+
         Mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
         Mode |= ENABLE_PROCESSED_INPUT;
 
         SetConsoleMode(InputHandle, Mode);
+
+        DWORD OutputMode;
+
+        if (GetConsoleMode(OutputHandle, &OutputMode)) {
+            OutputMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            
+            SetConsoleMode(OutputHandle, OutputMode);
+        }
+
         SetConsoleTitle("Mei - Text Editor");
     }
 
@@ -133,86 +144,6 @@
         fflush(stdout);
     }
 
-    void SetTextColor(TextColor Color) {
-        const char *Escape = "\x1b[0m";
-
-        switch (Color) {
-            case COLOR_CURSOR_LINE:
-                Escape = "\x1b[1;37m";
-                
-                break;
-
-            case COLOR_SEARCH_MATCH:
-                Escape = "\x1b[44;97m";
-                
-                break;
-
-            case COLOR_SYNTAX_KEYWORD:
-                Escape = "\x1b[1;35m";
-                
-                break;
-
-            case COLOR_SYNTAX_STRING:
-                Escape = "\x1b[32m";
-                
-                break;
-
-            case COLOR_SYNTAX_CHARACTER:
-                Escape = "\x1b[32m";
-                
-                break;
-
-            case COLOR_SYNTAX_NUMBER:
-                Escape = "\x1b[33m";
-                
-                break;
-
-            case COLOR_SYNTAX_COMMENT:
-                Escape = "\x1b[90m";
-                
-                break;
-
-            case COLOR_SYNTAX_OPERATOR:
-                Escape = "\x1b[36m";
-                
-                break;
-
-            case COLOR_SYNTAX_TYPE:
-                Escape = "\x1b[1;34m";
-                
-                break;
-
-            case COLOR_SYNTAX_FUNCTION:
-                Escape = "\x1b[1;36m";
-                
-                break;
-
-            case COLOR_SYNTAX_CONSTANT:
-                Escape = "\x1b[33m";
-                
-                break;
-
-            case COLOR_SYNTAX_PREPROCESSOR:
-                Escape = "\x1b[35m";
-                
-                break;
-
-            case COLOR_SYNTAX_PUNCTUATION:
-                Escape = "\x1b[37m";
-                
-                break;
-
-            case COLOR_NORMAL:
-            default:
-                Escape = "\x1b[0m";
-                
-                break;
-        }
-
-        printf("%s", Escape);
-        fflush(stdout);
-    }
-
     int GetTerminalRows(void) {
         struct winsize WindowSize = {0};
 
@@ -300,3 +231,83 @@
         return Character;
     }
 #endif
+
+void SetTextColor(TextColor Color) {
+    const char *Escape = "\x1b[0m";
+
+    switch (Color) {
+        case COLOR_CURSOR_LINE:
+            Escape = "\x1b[1;37m";
+            
+            break;
+
+        case COLOR_SEARCH_MATCH:
+            Escape = "\x1b[44;97m";
+            
+            break;
+
+        case COLOR_SYNTAX_KEYWORD:
+            Escape = "\x1b[1;35m";
+            
+            break;
+
+        case COLOR_SYNTAX_STRING:
+            Escape = "\x1b[32m";
+            
+            break;
+
+        case COLOR_SYNTAX_CHARACTER:
+            Escape = "\x1b[32m";
+            
+            break;
+
+        case COLOR_SYNTAX_NUMBER:
+            Escape = "\x1b[33m";
+            
+            break;
+
+        case COLOR_SYNTAX_COMMENT:
+            Escape = "\x1b[90m";
+            
+            break;
+
+        case COLOR_SYNTAX_OPERATOR:
+            Escape = "\x1b[36m";
+            
+            break;
+
+        case COLOR_SYNTAX_TYPE:
+            Escape = "\x1b[1;34m";
+            
+            break;
+
+        case COLOR_SYNTAX_FUNCTION:
+            Escape = "\x1b[1;36m";
+            
+            break;
+
+        case COLOR_SYNTAX_CONSTANT:
+            Escape = "\x1b[33m";
+            
+            break;
+
+        case COLOR_SYNTAX_PREPROCESSOR:
+            Escape = "\x1b[35m";
+            
+            break;
+
+        case COLOR_SYNTAX_PUNCTUATION:
+            Escape = "\x1b[37m";
+            
+            break;
+
+        case COLOR_NORMAL:
+        default:
+            Escape = "\x1b[0m";
+            
+            break;
+    }
+
+    printf("%s", Escape);
+    fflush(stdout);
+}
