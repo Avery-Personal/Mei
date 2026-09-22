@@ -232,7 +232,7 @@
     }
 #endif
 
-void SetTextColor(TextColor Color) {
+void MEI_SetTextColor(TextColor Color) {
     const char *Escape = "\x1b[0m";
 
     switch (Color) {

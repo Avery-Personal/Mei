@@ -34,7 +34,7 @@
     void ClearLine(int Y);
 
     void SetCursorPosition(int X, int Y);
-    void SetTextColor(TextColor Color);
+    void MEI_SetTextColor(TextColor Color);
 
     int GetTerminalRows();
     int GetTerminalWidth();
