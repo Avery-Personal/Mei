@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "Buffer.h"
 #include "Terminal.h"
@@ -39,6 +40,21 @@ static char *FileContents;
 int FileModified = 0;
 
 static int CommandErrorActive = 0;
+
+static char *MEIStrdup(const char *Source) {
+    if (Source == NULL)
+        return NULL;
+
+    size_t Length = strlen(Source);
+    char *Copy = malloc(Length + 1);
+
+    if (Copy == NULL)
+        return NULL;
+
+    memcpy(Copy, Source, Length + 1);
+
+    return Copy;
+}
 
 static int SyntaxStyleToColor(SyntaxStyle Style) {
     switch (Style) {
@@ -138,8 +154,25 @@ static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int 
     SetTextColor(COLOR_NORMAL);
 }
 
-void EnterCommandMode() {
+static int CommandEquals(const char *A, const char *B) {
+    while (*A != '\0' && *B != '\0') {
+        if (tolower((unsigned char)*A) !=
+            tolower((unsigned char)*B)) {
+            return 0;
+        }
+
+        A++;
+        B++;
+    }
+
+    return *A == '\0' && *B == '\0';
+}
+
+void EnterCommandMode(void) {
     int ScreenRows = GetTerminalRows();
+
+    if (ScreenRows <= 0)
+        ScreenRows = 1;
 
     char Command[COMMAND_BUFFER_SIZE] = {0};
     int CommandLength = 0;
@@ -152,25 +185,37 @@ void EnterCommandMode() {
     while (1) {
         int Character = ReadKey();
 
-        if (Character == ':') {
-            break;
+        if (Character == 27) {
+            ClearLine(ScreenRows - 1);
+
+            DrawStatusBar(CurrentFile);
+
+            return;
         }
 
-        if (Character == '\r') {
+        if (Character == '\r' || Character == '\n') {
             Command[CommandLength] = '\0';
 
             break;
-        } else if (Character == 8) {
+        }
+
+        if (Character == 8) {
             if (CommandLength > 0) {
                 CommandLength--;
 
                 SetCursorPosition(1 + CommandLength, ScreenRows - 1);
+
                 putchar(' ');
+
                 SetCursorPosition(1 + CommandLength, ScreenRows - 1);
-                
+
                 fflush(stdout);
             }
-        } else if (Character >= 32 && Character <= 126) {
+
+            continue;
+        }
+
+        if (Character >= 32 && Character <= 126) {
             if (CommandLength < COMMAND_BUFFER_SIZE - 1) {
                 Command[CommandLength++] = (char) Character;
 
@@ -182,21 +227,81 @@ void EnterCommandMode() {
 
     if (CommandLength == 0) {
         ClearLine(ScreenRows - 1);
+
         DrawStatusBar(CurrentFile);
 
         return;
     }
 
-    if (strncmp(Command, "create ", 7) == 0 || strncmp(Command, "Create ", 7) == 0) {
-        MEI_CreateFile(Command + 7);
-        MEI_OpenFile(CurrentFile);
-    } else if (strncmp(Command, "open ", 5) == 0 || strncmp(Command, "Open ", 5) == 0) {
-        MEI_OpenFile(Command + 5);
-    } else if (strncmp(Command, "remove ", 7) == 0 || strncmp(Command, "Remove ", 7) == 0) {
-        MEI_RemoveFile();
-    } else if (strcmp(Command, "save") == 0 || strcmp(Command, "Save") == 0) {
-        MEI_SaveFile();
-    } else if (strcmp(Command, "quit") == 0 || strcmp(Command, "Quit") == 0) {
+    char *CommandName = Command;
+    char *Argument = Command;
+
+    while (*Argument != '\0' && !isspace((unsigned char)*Argument)) {
+        Argument++;
+    }
+
+    if (*Argument != '\0') {
+        *Argument = '\0';
+        Argument++;
+
+        while (*Argument != '\0' && isspace((unsigned char)*Argument)) {
+            Argument++;
+        }
+    }
+
+    if (CommandEquals(CommandName, "create")) {
+        if (*Argument == '\0') {
+            ShowCommandError("Command Line Error - create requires a filename");
+
+            return;
+        }
+
+        if (!MEI_CreateFile(Argument)) {
+            ShowCommandError("Command Line Error - Couldn't create file");
+
+            return;
+        }
+
+    } else if (CommandEquals(CommandName, "open")) {
+        if (*Argument == '\0') {
+            ShowCommandError("Command Line Error - open requires a filename");
+
+            return;
+        }
+
+        if (!MEI_OpenFile(Argument)) {
+            ShowCommandError("Command Line Error - Couldn't open file");
+
+            return;
+        }
+
+    } else if (CommandEquals(CommandName, "remove")) {
+        if (!MEI_RemoveFile()) {
+            ShowCommandError("Command Line Error - Couldn't remove file");
+
+            return;
+        }
+
+    } else if (CommandEquals(CommandName, "save")) {
+        if (*Argument != '\0') {
+            ShowCommandError("Command Line Error - save takes no arguments");
+
+            return;
+        }
+
+        if (!MEI_SaveFile()) {
+            ShowCommandError("Command Line Error - Couldn't save file");
+
+            return;
+        }
+
+    } else if (CommandEquals(CommandName, "quit")) {
+        if (*Argument != '\0') {
+            ShowCommandError("Command Line Error - Quit takes no arguments");
+
+            return;
+        }
+
         DisableRawMode();
 
         exit(0);
@@ -207,6 +312,8 @@ void EnterCommandMode() {
     }
 
     ClearLine(ScreenRows - 1);
+
+    DrawStatusBar(CurrentFile);
 }
 
 void PushUndo() {
@@ -358,28 +465,111 @@ void HandleSearchInput(int Character) {
     fflush(stdout);
 }
 
-void MEI_CreateFile(const char *Filename) {
-    FILE *File = fopen(Filename, "w");
-    if (!File) {
-        fprintf(stderr, "Couldn't create file.");
-        strncpy(CurrentFile, Filename, sizeof(CurrentFile));
+static int SetCurrentFile(const char *Filename) {
+    if (Filename == NULL || Filename[0] == '\0')
+        return 0;
 
-        return;
+    size_t Length = strlen(Filename);
+
+    if (Length >= sizeof(CurrentFile))
+        return 0;
+
+    memcpy(CurrentFile, Filename, Length + 1);
+
+    return 1;
+}
+
+int MEI_CreateFile(const char *Filename) {
+    if (Filename == NULL || Filename[0] == '\0')
+        return 0;
+
+    FILE *File = fopen(Filename, "w");
+    if (!File)
+        return 0;
+
+    fclose(File);
+
+    if (!SetCurrentFile(Filename))
+        return 0;
+
+    InitializeEmptyBuffer();
+
+    return 1;
+}
+  
+int MEI_OpenFile(const char *Filename) {
+    if (Filename == NULL || Filename[0] == '\0')
+        return 0;
+
+    if (strlen(Filename) >= sizeof(CurrentFile))
+        return 0;
+
+    FILE *File = fopen(Filename, "r");
+    if (!File)
+        return 0;
+
+    int NewAllocatedLines = 16;
+    int NewLines = 0;
+
+    char **NewBuffer = malloc(NewAllocatedLines * sizeof(char *));
+
+    if (!NewBuffer) {
+        fclose(File);
+        
+        return 0;
+    }
+
+    char Line[1024];
+
+    while (fgets(Line, sizeof(Line), File)) {
+        Line[strcspn(Line, "\r\n")] = '\0';
+
+        if (NewLines >= NewAllocatedLines) {
+            int NewCapacity = NewAllocatedLines * 2;
+
+            char **ResizedBuffer = realloc(NewBuffer, NewCapacity * sizeof(char *));
+
+            if (!ResizedBuffer) {
+                for (int i = 0; i < NewLines; i++)
+                    free(NewBuffer[i]);
+
+                free(NewBuffer);
+                
+                fclose(File);
+
+                return 0;
+            }
+
+            NewBuffer = ResizedBuffer;
+            NewAllocatedLines = NewCapacity;
+        }
+
+        NewBuffer[NewLines] = MEIStrdup(Line);
+        if (!NewBuffer[NewLines]) {
+            for (int i = 0; i < NewLines; i++)
+                free(NewBuffer[i]);
+
+            free(NewBuffer);
+            fclose(File);
+
+            return 0;
+        }
+
+        NewLines++;
     }
 
     fclose(File);
 
-    strncpy(CurrentFile, Filename, sizeof(CurrentFile));
-    InitializeEmptyBuffer();
-}
-  
-void MEI_OpenFile(const char *Filename) {
-    FILE *File = fopen(Filename, "r");
-    if (!File) {
-        InitializeEmptyBuffer();
-        strncpy(CurrentFile, Filename, sizeof(CurrentFile));
-        
-        return;
+    if (NewLines == 0) {
+        NewBuffer[NewLines] = MEIStrdup("");
+
+        if (!NewBuffer[NewLines]) {
+            free(NewBuffer);
+            
+            return 0;
+        }
+
+        NewLines++;
     }
 
     if (TextBuffer) {
@@ -388,59 +578,49 @@ void MEI_OpenFile(const char *Filename) {
 
         free(TextBuffer);
     }
-    
-    AllocatedLines = 16;
-    Lines = 0;
-    TextBuffer = malloc(AllocatedLines * sizeof(char*));
 
-    char Line[1024];
+    TextBuffer = NewBuffer;
+    Lines = NewLines;
+    AllocatedLines = NewAllocatedLines;
 
-    while (fgets(Line, sizeof(Line), File)) {
-        Line[strcspn(Line, "\r\n")] = 0;
+    CursorX = 0;
+    CursorY = 0;
+    ScrollX = 0;
+    ScrollY = 0;
 
-        CheckBuffer();
-        
-        TextBuffer[Lines++] = strdup(Line);
-    }
-
-    fclose(File);
-
-    CursorX = CursorY = ScrollX = ScrollY = 0;
     FileModified = 0;
 
-    strncpy(CurrentFile, Filename, sizeof(CurrentFile));
+    SetCurrentFile(Filename);
 
-    if (Lines == 0)
-        TextBuffer[Lines++] = strdup("");
+    return 1;
 }
 
-void MEI_RemoveFile() {
-    FILE *File = fopen(CurrentFile, "r");
-    if (!File) {
-        fprintf(stderr, "Couldn't find file.");
-        strncpy(CurrentFile, CurrentFile, sizeof(CurrentFile));
+int MEI_RemoveFile(void) {
+    if (CurrentFile[0] == '\0')
+        return 0;
 
-        return;
-    }
-
-    fclose(File);
-    
-    int Removed = remove(CurrentFile);
-    if (Removed != 0)
-        fprintf(stderr, "Unable to remove file.");
+    return remove(CurrentFile) == 0;
 }
 
-void MEI_SaveFile() {
+int MEI_SaveFile(void) {
     FILE *File = fopen(CurrentFile, "w");
     if (!File)
-        return;
+        return 0;
 
-    for (int i = 0; i < Lines; i++)
-        fprintf(File, "%s\n", TextBuffer[i]);
+    for (int i = 0; i < Lines; i++) {
+        if (fprintf(File, "%s\n", TextBuffer[i]) < 0) {
+            fclose(File);
+            
+            return 0;
+        }
+    }
 
-    fclose(File);
+    if (fclose(File) != 0)
+        return 0;
 
     FileModified = 0;
+
+    return 1;
 }
 
 static void UpdateVerticalScroll() {
@@ -638,7 +818,7 @@ void PrintBuffer() {
 
             RenderSyntaxLine(Line, Length, ScrollX, Visible, &Tokens);
         }
-        
+
         SetTextColor(COLOR_NORMAL);
     }
 }

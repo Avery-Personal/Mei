@@ -20,10 +20,10 @@
 
     void HandleSearchInput(int Character);
 
-    void MEI_CreateFile(const char *Filename);
-    void MEI_OpenFile(const char *Filename);
-    void MEI_RemoveFile();
-    void MEI_SaveFile();
+    int MEI_CreateFile(const char *Filename);
+    int MEI_OpenFile(const char *Filename);
+    int MEI_RemoveFile();
+    int MEI_SaveFile();
 
     static void UpdateHorizontalScroll();
     static void UpdateVerticalScroll();
@@ -44,8 +44,11 @@
     void ClearCommandError(void);
     int IsCommandErrorActive(void);
 
+    static int SetCurrentFile(const char *Filename);
+    
     void SaveFile();
     void ModifyFile();
+
     const char *GetFileName();
 
     void SetActiveSearch(int Active);
