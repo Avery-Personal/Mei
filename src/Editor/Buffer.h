@@ -39,7 +39,10 @@ void InsertNewLine();
 
 void PrintBuffer();
 void DrawStatusBar(const char *Filename);
-static void ShowCommandError(const char *Message);
+
+void ShowCommandError(const char *Message);
+void ClearCommandError(void);
+int IsCommandErrorActive(void);
 
 void SaveFile();
 void ModifyFile();

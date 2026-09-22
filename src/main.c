@@ -10,13 +10,19 @@ int main() {
     ClearScreen();
 
     while (1) {
-        ClearScreen();
-        PrintBuffer();
-        DrawStatusBar(GetFileName());
-        
-        SetCursorPosition(LINE_NUMBER_GUTTER + GetCursorX() - GetScrollX(), GetCursorY() - GetScrollY());
+        if (!IsCommandErrorActive()) {
+            ClearScreen();
+            PrintBuffer();
+            DrawStatusBar(GetFileName());
+
+            SetCursorPosition(LINE_NUMBER_GUTTER + GetCursorX() - GetScrollX(), GetCursorY() - GetScrollY());
+        }
 
         int Character = ReadKey();
+
+        if (IsCommandErrorActive()) {
+            ClearCommandError();
+        }
 
         if (IsSearchActive()) {
             HandleSearchInput(Character);

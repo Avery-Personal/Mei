@@ -560,7 +560,7 @@ void DrawStatusBar(const char *Filename) {
     fwrite(Status, 1, strlen(Status), stdout);
 }
 
-static void ShowCommandError(const char *Message) {
+void ShowCommandError(const char *Message) {
     int ScreenRows = GetTerminalRows();
 
     ClearLine(ScreenRows - 1);
@@ -569,10 +569,19 @@ static void ShowCommandError(const char *Message) {
     printf("%s", Message);
     fflush(stdout);
 
-    ReadKey();
+    CommandErrorActive = 1;
+}
 
-    ClearLine(ScreenRows - 1);
-    DrawStatusBar(CurrentFile);
+void ClearCommandError(void) {
+    CommandErrorActive = 0;
+
+    //ClearLine(GetTerminalRows() - 1);
+
+    //DrawStatusBar(CurrentFile);
+}
+
+int IsCommandErrorActive(void) {
+    return CommandErrorActive;
 }
 
 void SaveFile() {
