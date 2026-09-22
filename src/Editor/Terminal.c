@@ -53,6 +53,22 @@
         SetConsoleCursorPosition(OutputHandle, HomeCoords);
     }
 
+    void ClearLine(int Y) {
+        HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_SCREEN_BUFFER_INFO CSBI;
+
+        if (!GetConsoleScreenBufferInfo(OutputHandle, &CSBI))
+            return;
+
+        COORD LineStart = { 0, (SHORT) Y };
+        DWORD Written;
+        DWORD Width = (DWORD)(CSBI.srWindow.Right - CSBI.srWindow.Left + 1);
+
+        FillConsoleOutputCharacter(OutputHandle, ' ', Width, LineStart, &Written);
+        FillConsoleOutputAttribute(OutputHandle, CSBI.wAttributes, Width, LineStart, &Written);
+        SetConsoleCursorPosition(OutputHandle, LineStart);
+    }
+
     void SetCursorPosition(int X, int Y) {
         HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
         COORD Position = { (SHORT) X, (SHORT) Y };
