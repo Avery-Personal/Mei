@@ -4,6 +4,7 @@
 
 #include "Buffer.h"
 #include "Terminal.h"
+#include "Syntax/Syntax.h"
 
 typedef struct {
     char **Lines;
@@ -38,6 +39,104 @@ static char *FileContents;
 int FileModified = 0;
 
 static int CommandErrorActive = 0;
+
+static int SyntaxStyleToColor(SyntaxStyle Style) {
+    switch (Style) {
+        case SYNTAX_STYLE_KEYWORD:
+            return COLOR_SYNTAX_KEYWORD;
+
+        case SYNTAX_STYLE_STRING:
+            return COLOR_SYNTAX_STRING;
+
+        case SYNTAX_STYLE_CHARACTER:
+            return COLOR_SYNTAX_CHARACTER;
+
+        case SYNTAX_STYLE_NUMBER:
+            return COLOR_SYNTAX_NUMBER;
+
+        case SYNTAX_STYLE_COMMENT:
+            return COLOR_SYNTAX_COMMENT;
+
+        case SYNTAX_STYLE_OPERATOR:
+            return COLOR_SYNTAX_OPERATOR;
+
+        case SYNTAX_STYLE_TYPE:
+            return COLOR_SYNTAX_TYPE;
+
+        case SYNTAX_STYLE_FUNCTION:
+            return COLOR_SYNTAX_FUNCTION;
+
+        case SYNTAX_STYLE_CONSTANT:
+            return COLOR_SYNTAX_CONSTANT;
+
+        case SYNTAX_STYLE_PREPROCESSOR:
+            return COLOR_SYNTAX_PREPROCESSOR;
+
+        case SYNTAX_STYLE_PUNCTUATION:
+            return COLOR_SYNTAX_PUNCTUATION;
+
+        case SYNTAX_STYLE_IDENTIFIER:
+        case SYNTAX_STYLE_NORMAL:
+        default:
+            return COLOR_NORMAL;
+    }
+}
+
+static SyntaxStyle GetSyntaxStyleAt(const SyntaxTokenList *Tokens, size_t Position) {
+    for (size_t i = 0; i < Tokens -> Count; i++) {
+        const SyntaxToken *Token = &Tokens -> Tokens[i];
+
+        if (Position >= Token -> Start && Position < Token -> Start + Token -> Length) {
+            return Token -> Style;
+        }
+    }
+
+    return SYNTAX_STYLE_NORMAL;
+}
+
+static void RenderSyntaxLine(const char *Line, int Length, int StartColumn, int VisibleLength, const SyntaxTokenList *Tokens) {
+    int EndColumn = StartColumn + VisibleLength;
+
+    SyntaxStyle CurrentStyle = SYNTAX_STYLE_NORMAL;
+
+    for (int Position = StartColumn; Position < EndColumn && Position < Length; Position++) {
+        if (SearchActive && SearchLen > 0 && Position + SearchLen <= Length && strncmp(&Line[Position], SearchQuery, SearchLen) == 0) {
+            if (CurrentStyle != SYNTAX_STYLE_NORMAL) {
+                SetTextColor(COLOR_NORMAL);
+                
+                CurrentStyle = SYNTAX_STYLE_NORMAL;
+            }
+
+            SetTextColor(COLOR_SEARCH_MATCH);
+
+            int MatchLength = SearchLen;
+
+            if (Position + MatchLength > EndColumn)
+                MatchLength = EndColumn - Position;
+
+            fwrite(&Line[Position], 1, MatchLength, stdout);
+
+            Position += MatchLength - 1;
+
+            SetTextColor(COLOR_NORMAL);
+
+            CurrentStyle = SYNTAX_STYLE_NORMAL;
+
+            continue;
+        }
+
+        SyntaxStyle Style = GetSyntaxStyleAt(Tokens, Position);
+        if (Style != CurrentStyle) {
+            SetTextColor( SyntaxStyleToColor(Style));
+
+            CurrentStyle = Style;
+        }
+
+        fwrite(&Line[Position], 1, 1, stdout);
+    }
+
+    SetTextColor(COLOR_NORMAL);
+}
 
 void EnterCommandMode() {
     int ScreenRows = GetTerminalRows();
@@ -496,6 +595,59 @@ void PrintBuffer() {
     int ScreenRows = GetTerminalRows() - 1;
     int ScreenWidth = GetTerminalWidth();
 
+    const SyntaxLanguage *Language = SyntaxGetLanguage(CurrentFile);
+
+    SyntaxState State = {.InBlockComment = 0};
+
+    for (int LineIndex = 0; LineIndex < Lines; LineIndex++) {
+        char *Line = TextBuffer[LineIndex];
+
+        SyntaxTokenList Tokens = {0};
+
+        SyntaxLexerLine(Language, Line, strlen(Line), &State, &Tokens);
+
+        if (LineIndex < ScrollY)
+            continue;
+
+        int ScreenRow = LineIndex - ScrollY;
+
+        if (ScreenRow >= ScreenRows)
+            break;
+
+        ClearLine(ScreenRow);
+
+        if (LineIndex == CursorY)
+            SetTextColor(COLOR_CURSOR_LINE);
+
+        char Number[LINE_NUMBER_GUTTER + 1];
+
+        snprintf(Number, sizeof(Number), "%4d |", LineIndex + 1);
+
+        fwrite(Number, 1, strlen(Number), stdout);
+
+        SetTextColor(COLOR_NORMAL);
+
+        int Length = (int) strlen(Line);
+        int MaxText = ScreenWidth - LINE_NUMBER_GUTTER;
+
+        if (ScrollX < Length) {
+            int Visible = Length - ScrollX;
+
+            if (Visible > MaxText)
+                Visible = MaxText;
+
+            RenderSyntaxLine(Line, Length, ScrollX, Visible, &Tokens);
+        }
+        
+        SetTextColor(COLOR_NORMAL);
+    }
+}
+
+/*
+void PrintBuffer() {
+    int ScreenRows = GetTerminalRows() - 1;
+    int ScreenWidth = GetTerminalWidth();
+
     for (int Rows = 0; Rows < ScreenRows; Rows++) {
         int LineIndex = Rows + ScrollY;
         if (LineIndex >= Lines)
@@ -546,7 +698,7 @@ void PrintBuffer() {
             }
         }
     }
-}
+}*/
 
 void DrawStatusBar(const char *Filename) {
     int ScreenRows = GetTerminalRows();
@@ -574,10 +726,6 @@ void ShowCommandError(const char *Message) {
 
 void ClearCommandError(void) {
     CommandErrorActive = 0;
-
-    //ClearLine(GetTerminalRows() - 1);
-
-    //DrawStatusBar(CurrentFile);
 }
 
 int IsCommandErrorActive(void) {

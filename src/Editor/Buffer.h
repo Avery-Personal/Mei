@@ -1,68 +1,68 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#define LINE_NUMBER_GUTTER 6
-#define COMMAND_BUFFER_SIZE 256
+    #define LINE_NUMBER_GUTTER 6
+    #define COMMAND_BUFFER_SIZE 256
 
-#define UNDO_STACK_SIZE 50
+    #define UNDO_STACK_SIZE 50
 
-void CommandMode();
-void EnterCommandMode();
-void ExitCommandMode();
+    void CommandMode();
+    void EnterCommandMode();
+    void ExitCommandMode();
 
-void PushUndo();
-void Undo();
-void Redo();
+    void PushUndo();
+    void Undo();
+    void Redo();
 
-void CopySelection();
-void CutSelection();
-void PasteClipboard();
+    void CopySelection();
+    void CutSelection();
+    void PasteClipboard();
 
-void HandleSearchInput(int Character);
+    void HandleSearchInput(int Character);
 
-void MEI_CreateFile(const char *Filename);
-void MEI_OpenFile(const char *Filename);
-void MEI_RemoveFile();
-void MEI_SaveFile();
+    void MEI_CreateFile(const char *Filename);
+    void MEI_OpenFile(const char *Filename);
+    void MEI_RemoveFile();
+    void MEI_SaveFile();
 
-static void UpdateHorizontalScroll();
-static void UpdateVerticalScroll();
+    static void UpdateHorizontalScroll();
+    static void UpdateVerticalScroll();
 
-void InitializeBuffer();
-void InitializeEmptyBuffer();
-void CheckBuffer();
+    void InitializeBuffer();
+    void InitializeEmptyBuffer();
+    void CheckBuffer();
 
-void InsertCharacter(char Character);
-void DeleteCharacter();
+    void InsertCharacter(char Character);
+    void DeleteCharacter();
 
-void InsertNewLine();
+    void InsertNewLine();
 
-void PrintBuffer();
-void DrawStatusBar(const char *Filename);
+    void PrintBuffer();
+    void DrawStatusBar(const char *Filename);
 
-void ShowCommandError(const char *Message);
-void ClearCommandError(void);
-int IsCommandErrorActive(void);
+    void ShowCommandError(const char *Message);
+    void ClearCommandError(void);
+    int IsCommandErrorActive(void);
 
-void SaveFile();
-void ModifyFile();
-const char *GetFileName();
+    void SaveFile();
+    void ModifyFile();
+    const char *GetFileName();
 
-void SetActiveSearch(int Active);
-int IsSearchActive();
+    void SetActiveSearch(int Active);
+    int IsSearchActive();
 
-void ResetSearchQuery();
-void ResetSearchLen();
+    void ResetSearchQuery();
+    void ResetSearchLen();
 
-void MoveCursorLeft();
-void MoveCursorRight();
-void MoveCursorUp();
-void MoveCursorDown();
+    void MoveCursorLeft();
+    void MoveCursorRight();
+    void MoveCursorUp();
+    void MoveCursorDown();
 
-int GetCursorX();
-int GetCursorY();
+    int GetCursorX();
+    int GetCursorY();
 
-int GetScrollX();
-int GetScrollY();
+    int GetScrollX();
+    int GetScrollY();
 
 #endif
