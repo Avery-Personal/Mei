@@ -6,7 +6,9 @@
 
 #define UNDO_STACK_SIZE 50
 
+void CommandMode();
 void EnterCommandMode();
+void ExitCommandMode();
 
 void PushUndo();
 void Undo();
@@ -37,6 +39,7 @@ void InsertNewLine();
 
 void PrintBuffer();
 void DrawStatusBar(const char *Filename);
+static void ShowCommandError(const char *Message);
 
 void SaveFile();
 void ModifyFile();

@@ -37,6 +37,8 @@ static char CurrentFile[256] = "Untitled.txt";
 static char *FileContents;
 int FileModified = 0;
 
+static int CommandErrorActive = 0;
+
 void EnterCommandMode() {
     int ScreenRows = GetTerminalRows();
 
@@ -50,6 +52,10 @@ void EnterCommandMode() {
 
     while (1) {
         int Character = ReadKey();
+
+        if (Character == ':') {
+            break;
+        }
 
         if (Character == '\r') {
             Command[CommandLength] = '\0';
@@ -75,17 +81,30 @@ void EnterCommandMode() {
         }
     }
 
+    if (CommandLength == 0) {
+        ClearLine(ScreenRows - 1);
+        DrawStatusBar(CurrentFile);
+
+        return;
+    }
+
     if (strncmp(Command, "create ", 7) == 0 || strncmp(Command, "Create ", 7) == 0) {
         MEI_CreateFile(Command + 7);
         MEI_OpenFile(CurrentFile);
     } else if (strncmp(Command, "open ", 5) == 0 || strncmp(Command, "Open ", 5) == 0) {
         MEI_OpenFile(Command + 5);
-    } else if (strncmp(Command, "remove ", 8) == 0 || strncmp(Command, "Remove ", 8) == 0) {
+    } else if (strncmp(Command, "remove ", 7) == 0 || strncmp(Command, "Remove ", 7) == 0) {
         MEI_RemoveFile();
     } else if (strcmp(Command, "save") == 0 || strcmp(Command, "Save") == 0) {
         MEI_SaveFile();
     } else if (strcmp(Command, "quit") == 0 || strcmp(Command, "Quit") == 0) {
+        DisableRawMode();
+
         exit(0);
+    } else {
+        ShowCommandError("Command Line Error - Invalid Command");
+
+        return;
     }
 
     ClearLine(ScreenRows - 1);
@@ -138,11 +157,11 @@ void Undo() {
 
     free(TextBuffer);
 
-    Lines = Previous->LinesCount;
+    Lines = Previous -> LinesCount;
     TextBuffer = malloc(Lines * sizeof(char*));
 
     for (int i = 0; i < Lines; i++)
-        TextBuffer[i] = strdup(Previous->Lines[i]);
+        TextBuffer[i] = strdup(Previous -> Lines[i]);
 
     CursorX = Previous -> CursorX;
     CursorY = Previous -> CursorY;
@@ -539,6 +558,21 @@ void DrawStatusBar(const char *Filename) {
 
     snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s", CurrentFile, GetCursorY() + 1, GetCursorX() + 1, FileModified ? "Modified" : "Saved");
     fwrite(Status, 1, strlen(Status), stdout);
+}
+
+static void ShowCommandError(const char *Message) {
+    int ScreenRows = GetTerminalRows();
+
+    ClearLine(ScreenRows - 1);
+    SetTextColor(COLOR_NORMAL);
+
+    printf("%s", Message);
+    fflush(stdout);
+
+    ReadKey();
+
+    ClearLine(ScreenRows - 1);
+    DrawStatusBar(CurrentFile);
 }
 
 void SaveFile() {
