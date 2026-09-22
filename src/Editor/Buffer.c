@@ -39,15 +39,11 @@ int FileModified = 0;
 
 void EnterCommandMode() {
     int ScreenRows = GetTerminalRows();
-    int ScreenWidth = GetTerminalWidth();
 
     char Command[COMMAND_BUFFER_SIZE] = {0};
     int CommandLength = 0;
-    
-    DWORD Written;
 
-    SetCursorPosition(0, ScreenRows - 1);
-    FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+    ClearLine(ScreenRows - 1);
 
     printf(":");
     fflush(stdout);
@@ -92,7 +88,7 @@ void EnterCommandMode() {
         exit(0);
     }
 
-    FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+    ClearLine(ScreenRows - 1);
 }
 
 void PushUndo() {
@@ -206,9 +202,6 @@ void PasteClipboard() {
 
 void HandleSearchInput(int Character) {
     int ScreenRows = GetTerminalRows();
-    int ScreenWidth = GetTerminalWidth();
-
-    DWORD Written;
 
     if (Character == 27 || Character == '\r') {
         SearchActive = 0;
@@ -240,8 +233,7 @@ void HandleSearchInput(int Character) {
         }
     }
 
-    SetCursorPosition(0, ScreenRows - 1);
-    FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
+    ClearLine(ScreenRows - 1);
 
     printf("/%s", SearchQuery);
 
@@ -484,20 +476,16 @@ void InsertNewLine() {
 void PrintBuffer() {
     int ScreenRows = GetTerminalRows() - 1;
     int ScreenWidth = GetTerminalWidth();
-    
-    DWORD Written;
-    HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
     for (int Rows = 0; Rows < ScreenRows; Rows++) {
         int LineIndex = Rows + ScrollY;
         if (LineIndex >= Lines)
             break;
 
-        SetCursorPosition(0, Rows);
-        FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', ScreenWidth, (COORD){0, Rows}, &Written);
+        ClearLine(Rows);
 
         if (LineIndex == CursorY)
-            SetConsoleTextAttribute(OutputHandle, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
+            SetTextColor(COLOR_CURSOR_LINE);
 
         if (LineIndex < Lines) {
             char Number[LINE_NUMBER_GUTTER + 1];
@@ -508,7 +496,7 @@ void PrintBuffer() {
             fwrite("    0 |", 1, LINE_NUMBER_GUTTER, stdout);
         }
         
-        SetConsoleTextAttribute(OutputHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+        SetTextColor(COLOR_NORMAL);
 
         char *Line = TextBuffer[LineIndex];
         int len = strlen(Line);
@@ -524,11 +512,11 @@ void PrintBuffer() {
 
             while (i < len && i < ScrollX + Visible) {
                 if (SearchActive && SearchLen > 0 && strncmp(&Line[i], SearchQuery, SearchLen) == 0) {
-                    SetConsoleTextAttribute(OutputHandle, BACKGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+                    SetTextColor(COLOR_SEARCH_MATCH);
 
                     fwrite(&Line[i], 1, SearchLen, stdout);
 
-                    SetConsoleTextAttribute(OutputHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+                    SetTextColor(COLOR_NORMAL);
 
                     i += SearchLen;
                 } else {
@@ -543,16 +531,11 @@ void PrintBuffer() {
 
 void DrawStatusBar(const char *Filename) {
     int ScreenRows = GetTerminalRows();
-    int ScreenWidth = GetTerminalWidth();
     
     char Status[256];
-    
-    DWORD Written;
-    HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    SetConsoleTextAttribute(OutputHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-    FillConsoleOutputCharacter(OutputHandle, ' ', ScreenWidth, (COORD){0, ScreenRows - 1}, &Written);
-    SetCursorPosition(0, ScreenRows - 1);
+    SetTextColor(COLOR_NORMAL);
+    ClearLine(ScreenRows - 1);
 
     snprintf(Status, sizeof(Status), "File: %s  |  Ln %d, Col %d  |  %s", CurrentFile, GetCursorY() + 1, GetCursorX() + 1, FileModified ? "Modified" : "Saved");
     fwrite(Status, 1, strlen(Status), stdout);
