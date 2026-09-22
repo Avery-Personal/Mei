@@ -43,7 +43,7 @@ int main() {
             ResetSearchQuery();
         } else if (Character == 26)
             Undo();
-        else if (Character == 25)
+        else if (Character == 25 || Character == -5)
             Redo();
         else if (Character == 19)
             MEI_SaveFile();

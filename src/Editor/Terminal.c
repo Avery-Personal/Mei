@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "Terminal.h"
 
@@ -247,20 +248,49 @@
             return 8;
 
         if (Character == 27) {
-            char Sequence[2];
+            char Sequence[8];
 
-            if (read(STDIN_FILENO, &Sequence[0], 1) != 1)
-                return 27;
+            int len = 0;
 
-            if (read(STDIN_FILENO, &Sequence[1], 1) != 1)
-                return 27;
+            while (len < 7) {
+                if (read(STDIN_FILENO, &Sequence[len], 1) != 1)
+                    break;
 
-            if (Sequence[0] == '[') {
-                switch (Sequence[1]) {
-                    case 'D': return -1;
-                    case 'C': return -2;
-                    case 'A': return -3;
-                    case 'B': return -4;
+                if (Sequence[len] >= 'A' && Sequence[len] <= 'Z') {
+                    len++;
+                    
+                    break;
+                }
+
+                if (Sequence[len] >= 'a' && Sequence[len] <= 'z') {
+                    len++;
+                    
+                    break;
+                }
+
+                if (Sequence[len] == '~') {
+                    len++;
+                    
+                    break;
+                }
+
+                len++;
+            }
+
+            Sequence[len] = '\0';
+
+            if (len >= 1 && Sequence[0] == '[') {
+                if (len == 2) {
+                    switch (Sequence[1]) {
+                        case 'D': return -1;
+                        case 'C': return -2;
+                        case 'A': return -3;
+                        case 'B': return -4;
+                    }
+                }
+
+                if (strcmp(&Sequence[1], "1;6Z") == 0) {
+                    return -5; 
                 }
             }
 
