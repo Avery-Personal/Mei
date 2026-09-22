@@ -184,6 +184,14 @@ void EnterCommandMode(void) {
 
     while (1) {
         int Character = ReadKey();
+        
+        if (Character == ':' && CommandLength == 0) {
+            ClearLine(ScreenRows - 1);
+            
+            DrawStatusBar(CurrentFile);
+            
+            return;
+        }
 
         if (Character == 27) {
             ClearLine(ScreenRows - 1);
