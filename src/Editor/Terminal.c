@@ -207,6 +207,9 @@
                 
                 break;
         }
+
+        printf("%s", Escape);
+        fflush(stdout);
     }
 
     int GetTerminalRows(void) {
