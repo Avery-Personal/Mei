@@ -37,43 +37,20 @@
     }
 
     void ClearScreen() {
-        HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        CONSOLE_SCREEN_BUFFER_INFO CSBI;
-
-        DWORD Count;
-        DWORD CellCount;
-        COORD HomeCoords = {0, 0};
-
-        GetConsoleScreenBufferInfo(OutputHandle, &CSBI);
-
-        CellCount = CSBI.dwSize.X * CSBI.dwSize.Y;
-
-        FillConsoleOutputCharacter(OutputHandle, ' ', CellCount, HomeCoords, &Count);
-        FillConsoleOutputAttribute(OutputHandle, CSBI.wAttributes, CellCount, HomeCoords, &Count);
-        SetConsoleCursorPosition(OutputHandle, HomeCoords);
+        printf("\x1b[2J\x1b[H");
+        fflush(stdout);
     }
 
     void ClearLine(int Y) {
-        HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        CONSOLE_SCREEN_BUFFER_INFO CSBI;
-
-        if (!GetConsoleScreenBufferInfo(OutputHandle, &CSBI))
-            return;
-
-        COORD LineStart = { 0, (SHORT) Y };
-        DWORD Written;
-        DWORD Width = (DWORD)(CSBI.srWindow.Right - CSBI.srWindow.Left + 1);
-
-        FillConsoleOutputCharacter(OutputHandle, ' ', Width, LineStart, &Written);
-        FillConsoleOutputAttribute(OutputHandle, CSBI.wAttributes, Width, LineStart, &Written);
-        SetConsoleCursorPosition(OutputHandle, LineStart);
+        SetCursorPosition(0, Y);
+        
+        printf("\x1b[2K");
+        fflush(stdout);
     }
 
     void SetCursorPosition(int X, int Y) {
-        HANDLE OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        COORD Position = { (SHORT) X, (SHORT) Y };
-
-        SetConsoleCursorPosition(OutputHandle, Position);
+        printf("\x1b[%d;%dH", Y + 1, X + 1);
+        fflush(stdout);
     }
 
     int GetTerminalRows() {
@@ -132,11 +109,15 @@
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &Raw);
 
         printf("\x1b]0;Mei - Text Editor\x07");
+        printf("\x1b[>4;2m");
 
         fflush(stdout);
     }
 
     void DisableRawMode() {
+        printf("\x1b[>4;m");
+        fflush(stdout);
+
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &OriginalMode);
     }
 
